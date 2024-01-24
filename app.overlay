@@ -1,0 +1,80 @@
+/ {
+    openzirk_leds {
+        compatible = "gpio-leds";
+        
+        led_vl_o: led_vl_o {
+            gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+            label = "LED VL Orange";
+        };
+
+        led_vl_b: led_vl_b {
+            gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+            label = "LED VL Blue";
+        };
+
+        led_rl_o: led_rl_o {
+            gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+            label = "LED RL Orange";
+        };
+
+        led_rl_b: led_rl_b {
+            gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+            label = "LED RL Blue";
+        };
+
+        led_debug_r: led_debug_r {
+            gpios = <&gpio0 19 GPIO_ACTIVE_HIGH>;
+            label = "LED Debug Red";
+        };
+        
+        led_debug_g: led_debug_g {
+            gpios = <&gpio0 18 GPIO_ACTIVE_HIGH>;
+            label = "LED Debug green";
+        };
+    };
+
+    zephyr,user  {
+        io-channels = <&adc 0>, <&adc 1>, <&adc 2>;
+    };
+
+
+    temp_probes_enable: temp_probes_enable {
+        compatible = "power-switch";
+        gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+        label = "Term probes Enable";
+    };
+    ssr: ssr {
+        compatible = "power-switch";
+        gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+        label = "SSR Enable";
+    };
+
+};
+
+&adc {
+    vref-mv = <3000>;
+    #address-cells = <1>;
+	#size-cells = <0>;
+
+    channel@0 {
+		reg = <0>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+    channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+    channel@2 {
+		reg = <2>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+ };
