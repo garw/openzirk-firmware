@@ -39,7 +39,8 @@ int main(void)
     while (1) {
         set_vl_led_blue();
         set_rl_led_orange();
-        
+
+        do_temp_probe(); 
         k_msleep(SLEEP_TIME_MS);
     }
     return 0;
