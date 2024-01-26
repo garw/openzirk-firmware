@@ -6,4 +6,4 @@ project(openzirk)
 
 
 target_include_directories(app PRIVATE inc)
-target_sources(app PRIVATE src/main.c src/current_sense.c src/temp_sense.c src/output.c)
+target_sources(app PRIVATE src/main.c src/current_sense.c src/temp_sense.c src/io.c)

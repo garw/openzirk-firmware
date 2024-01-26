@@ -33,8 +33,22 @@
         };
     };
 
+    dip_switch {
+        compatible = "dipswitch";
+        gpios = <&gpio0 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+                <&gpio0 3 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+                <&gpio0 4 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+                <&gpio0 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+    };
+
     zephyr,user  {
         io-channels = <&adc 0>, <&adc 1>, <&adc 2>;
+
+        current_sensor_threshold_mv = <40>;
+        temp_warm_threshold = <35>;
+
+        pump_duty_cycle_s = <60>;
+        pump_mandatory_cooldown_min = <10>;
     };
 
 

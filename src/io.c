@@ -18,11 +18,22 @@ static const struct gpio_dt_spec temp_probes_enable = GPIO_DT_SPEC_GET(DT_NODELA
 static const struct gpio_dt_spec* all_gpios[] = {&pico_led, &led_vl_b, &led_vl_o, &led_rl_b, &led_rl_o,
                                                  &led_debug_r, &led_debug_g, &ssr, &temp_probes_enable};
 
-void output_init() {
+static const struct gpio_dt_spec dipswitch[] = {
+        DT_FOREACH_PROP_ELEM_SEP(DT_PATH(dip_switch), gpios,
+                                 GPIO_DT_SPEC_GET_BY_IDX, (,))
+};
+
+void io_init() {
     for (size_t i = 0; i < ARRAY_SIZE(all_gpios); ++i) {
         int err = gpio_pin_configure_dt(all_gpios[i], GPIO_OUTPUT_INACTIVE);
         if (err < 0) {
-            printk("Failed to init gpio index %d", i);
+            printk("Failed to init output gpio index %d", i);
+        }
+    }
+    for (size_t i = 0; i < ARRAY_SIZE(dipswitch); ++i) {
+        int err = gpio_pin_configure_dt(&dipswitch[i], GPIO_INPUT);
+        if (err < 0) {
+            printk("Failed to init dipswitch input gpio index %d", i);
         }
     }
     gpio_pin_set_dt(&pico_led, 1);
@@ -36,6 +47,10 @@ void set_vl_led_orange() {
     (void)gpio_pin_set_dt(&led_vl_o, 1);
     (void)gpio_pin_set_dt(&led_vl_b, 0);
 }
+void toggle_vl_leds() {
+    (void)gpio_pin_toggle_dt(&led_vl_b);
+    (void)gpio_pin_toggle_dt(&led_vl_o);
+}
 
 void set_rl_led_blue() {
     (void)gpio_pin_set_dt(&led_rl_b, 1);
@@ -44,6 +59,10 @@ void set_rl_led_blue() {
 void set_rl_led_orange() {
     (void)gpio_pin_set_dt(&led_rl_o, 1);
     (void)gpio_pin_set_dt(&led_rl_b, 0);
+}
+void toggle_rl_leds() {
+    (void)gpio_pin_toggle_dt(&led_rl_b);
+    (void)gpio_pin_toggle_dt(&led_rl_o);
 }
 
 void set_debug_led_red(int state) {
@@ -59,4 +78,14 @@ void set_temp_probes_enable(int state) {
 
 void set_pump(int state) {
     (void)gpio_pin_set_dt(&ssr, state);
+}
+
+uint8_t get_dipswitch_status() {
+    uint8_t result = 0;
+    for (size_t i = 0; i < ARRAY_SIZE(dipswitch); ++i) {
+        if (gpio_pin_get_dt(&dipswitch[i])) {
+            result |= (1<<i);
+        }
+    }
+    return result;
 }

@@ -1,3 +1,5 @@
+#include "app.h"
+
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/adc.h>
 
@@ -28,7 +30,7 @@ int32_t get_current_sense_max_to_min_mv_diff() {
         /* buffer size in bytes, not number of samples */
         .buffer_size = sizeof(adc_buf),
     };
-    (void)adc_sequence_init_dt(&adc_current_sense, &sequence); 
+    (void)adc_sequence_init_dt(&adc_current_sense, &sequence);
 
 
     k_timer_start(&adc_sample_timer,K_NO_WAIT , K_USEC(500));
@@ -44,16 +46,34 @@ int32_t get_current_sense_max_to_min_mv_diff() {
         }
     }
     k_timer_stop(&adc_sample_timer);
-    printk("Collected samples min=%imV, max=%imV\n", mv_min, mv_max);
+    if (enable_debug_output) {
+        printk("Collected samples min=%imV, max=%imV\n", mv_min, mv_max);
+    }
     return mv_max - mv_min;
 }
 
 void current_sense_main(void *p1, void *p2, void *p3) {
+    struct k_event *sensor_events = (struct k_event*)p1;
+
     current_sense_init();
+    // wait for stabilization capacitor to be fully charged
+    k_msleep(50);
 
     while(1) {
         int32_t mv_diff = get_current_sense_max_to_min_mv_diff();
-        printk("Current sense delta %imV\n", mv_diff);
+        if (enable_debug_output) {
+            printk("Current sense delta %imV\n", mv_diff);
+        }
+        if (mv_diff >= DT_PROP(DT_PATH(zephyr_user), current_sensor_threshold_mv)) {
+            // validate if still present to prevent accidentially causing from noise
+            int32_t mv_diff2 = get_current_sense_max_to_min_mv_diff();
+            if (enable_debug_output) {
+                printk("Second measuresment current sense delta %imV\n", mv_diff);
+            }
+            if (mv_diff2 >= DT_PROP(DT_PATH(zephyr_user), current_sensor_threshold_mv)) {
+                k_event_post(sensor_events, EVENT_CURRENT_SENSE);
+            }
+        }
         k_msleep(500);
     }
 

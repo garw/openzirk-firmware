@@ -1,0 +1,11 @@
+
+description: GPIO 
+
+compatible: "dipswitch"
+
+properties:
+  gpios:
+    type: phandle-array
+    required: true
+    description: |
+      An array of the GPIOs connected to the switch
