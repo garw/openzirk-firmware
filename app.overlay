@@ -1,7 +1,7 @@
 / {
     openzirk_leds {
         compatible = "gpio-leds";
-        
+
         led_vl_o: led_vl_o {
             gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
             label = "LED VL Orange";
@@ -26,7 +26,7 @@
             gpios = <&gpio0 19 GPIO_ACTIVE_HIGH>;
             label = "LED Debug Red";
         };
-        
+
         led_debug_g: led_debug_g {
             gpios = <&gpio0 18 GPIO_ACTIVE_HIGH>;
             label = "LED Debug green";
@@ -49,6 +49,10 @@
 
         pump_duty_cycle_s = <60>;
         pump_mandatory_cooldown_min = <10>;
+    };
+
+    chosen {
+        zephyr,console = &cdc_acm_uart0;
     };
 
 
@@ -91,4 +95,10 @@
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
 		zephyr,resolution = <12>;
 	};
+ };
+
+ &zephyr_udc0 {
+    cdc_acm_uart0: cdc_acm_uart0 {
+        compatible = "zephyr,cdc-acm-uart";
+    };
  };
