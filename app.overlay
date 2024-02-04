@@ -44,7 +44,8 @@
     zephyr,user  {
         io-channels = <&adc 0>, <&adc 1>, <&adc 2>;
 
-        current_sensor_threshold_mv = <40>;
+        current_sensor_threshold_mv = <150>;
+        current_sensor_minimal_active_time_ms = <800>;
         temp_warm_threshold = <35>;
 
         pump_duty_cycle_s = <60>;
