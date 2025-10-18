@@ -27,6 +27,7 @@ struct k_thread temp_sense_thread;
 K_EVENT_DEFINE(sensor_events);
 
 bool enable_debug_output = false;
+bool circulate_while_hotwater_pouring = false;
 
 void disable_activation_debug_led(struct k_timer *timer) {
     (void)timer;
@@ -43,6 +44,13 @@ int main(void)
     if (dipswitch_state & 1) {
         printk("Debug output enabled\n");
         enable_debug_output = true;
+    }
+    if (dipswitch_state & 8) {
+        printk("Circulate while hotwater pouring enabled\n");
+        circulate_while_hotwater_pouring = true;
+        if (dipswitch_state & 2) {
+            printk("Initial double circlulation cycle.\n");
+        }
     }
 
     struct TempSensors temp_sensors = {ATOMIC_INIT(INVALID), ATOMIC_INIT(INVALID)};
@@ -75,34 +83,61 @@ int main(void)
             set_debug_led_red(1);
             k_timer_start(&activation_debug_led_timer, K_SECONDS(5), K_NO_WAIT);
         }
-        // we run if RL temp isn't still "warm"
-        if (atomic_get(&temp_sensors.rl_status) == WARM) {
-            printk("Current sensor detected but RL still warm.");
-            continue;
-        }
-        if (now - last_pump_activation < DT_PROP(DT_PATH(zephyr_user), pump_mandatory_cooldown_min)*60*1000) {
-            printf("Current sensor detected but still in mandatory cooldown\n.");
-            continue;
-        }
+        if (circulate_while_hotwater_pouring) {
+            // we circulate one cycle for the usual pump time (or x2) and then
+            // in following cycles 30s, then after each such cycle disable the circulation pump
+            // and see if the current sensor is still reporting current after 5s cooldown
+            // (otherwise the circulation pump may keep the heat water pump active more or less indefinately)
+                set_pump(1);
+                int64_t delta = k_uptime_delta(&last_pump_activation);
+                if (delta < 2000) {
+                    // the pump was active less than a second ago, we probe every 30s
+                    printk("Following cycle. Circulate for 30s.\n");
+                    k_sleep(K_SECONDS(30));
+                } else {
+                    uint32_t cycle_time = DT_PROP(DT_PATH(zephyr_user), pump_duty_cycle_s);
+                    if (dipswitch_state & 2) {
+                        cycle_time *= 2;
+                    }
+                    printk("First cycle. Circulate for %is.\n", cycle_time);
+                    k_sleep(K_SECONDS(cycle_time));
+                }
+                printk("Stop pump\n");
+                set_pump(0);
+                k_sleep(K_SECONDS(5));
+                last_pump_activation = k_uptime_get();
+                k_event_clear(&sensor_events, EVENT_CURRENT_SENSE);
+                continue;
+        } else {
+            // we run if RL temp isn't still "warm"
+            if (atomic_get(&temp_sensors.rl_status) == WARM) {
+                printk("Current sensor detected but RL still warm.");
+                continue;
+            }
+            if (now - last_pump_activation < DT_PROP(DT_PATH(zephyr_user), pump_mandatory_cooldown_min)*60*1000) {
+                printf("Current sensor detected but still in mandatory cooldown\n.");
+                continue;
+            }
 
-        // now run for duty cycle time or until RL becomes warm again
-        printk("Start pump.\n");
-        for (size_t i = 0; i < 2; ++i) {
-            set_pump(1);
-            last_pump_activation = k_uptime_get();
-            events = k_event_wait(&sensor_events, EVENT_RL_WARM, true,
-                                  K_SECONDS(DT_PROP(DT_PATH(zephyr_user), pump_duty_cycle_s)));
-            if (events == 0) {
-                printk("Cycle time ended.\n");
-            } else {
-                printk("RL sensor reports WARM\n");
+            // now run for duty cycle time or until RL becomes warm again
+            printk("Start pump.\n");
+            for (size_t i = 0; i < 2; ++i) {
+                set_pump(1);
+                last_pump_activation = k_uptime_get();
+                events = k_event_wait(&sensor_events, EVENT_RL_WARM, true,
+                                      K_SECONDS(DT_PROP(DT_PATH(zephyr_user), pump_duty_cycle_s)));
+                if (events == 0) {
+                    printk("Cycle time ended.\n");
+                } else {
+                    printk("RL sensor reports WARM\n");
+                }
+                // if VL still isn't warm, it may have taken a long time to get warm water from the tank
+                // and we do an extra duty cycle
+                if (atomic_get(&temp_sensors.vl_status) == WARM) {
+                    break;
+                }
+                printk("VL still cold after one duty cycle. Prolong this cycle.\n");
             }
-            // if VL still isn't warm, it may have taken a long time to get warm water from the tank
-            // and we do an extra duty cycle
-            if (atomic_get(&temp_sensors.vl_status) == WARM) {
-                break;
-            }
-            printk("VL still cold after one duty cycle. Prolong this cycle.\n");
         }
         printk("Stop pump\n");
         set_pump(0);
